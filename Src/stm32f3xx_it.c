@@ -46,7 +46,7 @@
 	extern unsigned char buffer[100];
 	extern int pos;
 	extern char temp[100];
-	
+	unsigned char m[15] = "Motion Detected";
 
 	//TimeAndCalenderMethods
 	extern char* zeropadd(int time);
@@ -65,7 +65,6 @@
 
 /* External variables --------------------------------------------------------*/
 extern ADC_HandleTypeDef hadc1;
-extern ADC_HandleTypeDef hadc3;
 extern TIM_HandleTypeDef htim2;
 extern UART_HandleTypeDef huart2;
 
@@ -348,13 +347,24 @@ void ADC1_2_IRQHandler(void)
   /* USER CODE END ADC1_2_IRQn 0 */
   HAL_ADC_IRQHandler(&hadc1);
   /* USER CODE BEGIN ADC1_2_IRQn 1 */
-
-	
-//	int x = HAL_ADC_GetValue(&hadc1);
-//	sprintf(temp,"%d",x);
-//	
-//	HAL_ADC_Start_IT(&hadc1);
+	int x = HAL_ADC_GetValue(&hadc1);
+	sprintf(temp,"%d",x);
+	HAL_ADC_Start_IT(&hadc1);
   /* USER CODE END ADC1_2_IRQn 1 */
+}
+
+/**
+* @brief This function handles EXTI line[9:5] interrupts.
+*/
+void EXTI9_5_IRQHandler(void)
+{
+  /* USER CODE BEGIN EXTI9_5_IRQn 0 */
+
+  /* USER CODE END EXTI9_5_IRQn 0 */
+  HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_9);
+  /* USER CODE BEGIN EXTI9_5_IRQn 1 */
+	HAL_UART_Transmit(&huart2,m,sizeof(unsigned char)*100,1000);
+  /* USER CODE END EXTI9_5_IRQn 1 */
 }
 
 /**
@@ -374,19 +384,15 @@ void TIM2_IRQHandler(void)
 		
 		switch (mode){
 			case 0:
-				showTimeCalender(t,d,blinkCounter);
+				showTimeCalender(t,d,blinkCounter);			
 				break;
 			case 1:
 				showTemp();
 				break;
-//			case 2:
-//				motionDtc();
-//				break;
 			case 3:
 				showTimeCalender(t,d,blinkCounter);
 				break;
-			case 10:
-			break;
+
 			
 		}
 
@@ -403,44 +409,29 @@ void USART2_IRQHandler(void)
   /* USER CODE END USART2_IRQn 0 */
   HAL_UART_IRQHandler(&huart2);
   /* USER CODE BEGIN USART2_IRQn 1 */
-//		if (dd != 0x0D){
-//			buffer[pos] = dd;
-//			pos++;
-//			buffer[pos] = '\0';
-//		}
-//		else{
-//			pos = 0; 
-//			if(buffer[0] == '*' && buffer[1] == '*' && buffer[2] == '*' && buffer[3] == '*' 
-//				&& buffer[4] == '*' && buffer[5] == '\0'){
-//					if(mode == 0){
-//						mode = 1;
-//						*(buffer + 1) = ' ';
-//					}
-//					else
-//						mode = 0;
-//					c = 1;
-//			}
-//		}
+	
+		if (dd != 0x0D){
+			buffer[pos] = dd;
+			pos++;
+			buffer[pos] = '\0';
+		}
+		else{
+			pos = 0; 
+			if(buffer[0] == '*' && buffer[1] == '*' && buffer[2] == '*' && buffer[3] == '*' 
+				&& buffer[4] == '*' && buffer[5] == '\0'){
+					if(mode == 0){
+						
+						mode = 1;
+						*(buffer + 1) = ' ';
+					}
+					else
+						mode = 0;
+					c = 1;
+			}
+		}
 
-//		HAL_UART_Receive_IT(&huart2, &dd, sizeof(unsigned char));
+		HAL_UART_Receive_IT(&huart2, &dd, sizeof(unsigned char));
   /* USER CODE END USART2_IRQn 1 */
-}
-
-/**
-* @brief This function handles ADC3 global interrupt.
-*/
-void ADC3_IRQHandler(void)
-{
-  /* USER CODE BEGIN ADC3_IRQn 0 */
-
-  /* USER CODE END ADC3_IRQn 0 */
-  HAL_ADC_IRQHandler(&hadc3);
-  /* USER CODE BEGIN ADC3_IRQn 1 */
-	char a[100] = "Motion detected";
-	HAL_UART_Transmit(&huart2,a,sizeof(char) * 100 , 1000);
-
-	HAL_ADC_Start_IT(&hadc3);
-  /* USER CODE END ADC3_IRQn 1 */
 }
 
 /* USER CODE BEGIN 1 */

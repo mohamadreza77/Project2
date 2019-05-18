@@ -104,29 +104,6 @@ void HAL_ADC_MspInit(ADC_HandleTypeDef* hadc)
 
   /* USER CODE END ADC1_MspInit 1 */
   }
-  else if(hadc->Instance==ADC3)
-  {
-  /* USER CODE BEGIN ADC3_MspInit 0 */
-
-  /* USER CODE END ADC3_MspInit 0 */
-    /* Peripheral clock enable */
-    __HAL_RCC_ADC34_CLK_ENABLE();
-  
-    /**ADC3 GPIO Configuration    
-    PB13     ------> ADC3_IN5 
-    */
-    GPIO_InitStruct.Pin = GPIO_PIN_13;
-    GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
-    HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-
-    /* ADC3 interrupt Init */
-    HAL_NVIC_SetPriority(ADC3_IRQn, 3, 0);
-    HAL_NVIC_EnableIRQ(ADC3_IRQn);
-  /* USER CODE BEGIN ADC3_MspInit 1 */
-
-  /* USER CODE END ADC3_MspInit 1 */
-  }
 
 }
 
@@ -151,25 +128,6 @@ void HAL_ADC_MspDeInit(ADC_HandleTypeDef* hadc)
   /* USER CODE BEGIN ADC1_MspDeInit 1 */
 
   /* USER CODE END ADC1_MspDeInit 1 */
-  }
-  else if(hadc->Instance==ADC3)
-  {
-  /* USER CODE BEGIN ADC3_MspDeInit 0 */
-
-  /* USER CODE END ADC3_MspDeInit 0 */
-    /* Peripheral clock disable */
-    __HAL_RCC_ADC34_CLK_DISABLE();
-  
-    /**ADC3 GPIO Configuration    
-    PB13     ------> ADC3_IN5 
-    */
-    HAL_GPIO_DeInit(GPIOB, GPIO_PIN_13);
-
-    /* ADC3 interrupt DeInit */
-    HAL_NVIC_DisableIRQ(ADC3_IRQn);
-  /* USER CODE BEGIN ADC3_MspDeInit 1 */
-
-  /* USER CODE END ADC3_MspDeInit 1 */
   }
 
 }
