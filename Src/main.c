@@ -46,6 +46,7 @@
 
 /* Private variables ---------------------------------------------------------*/
 ADC_HandleTypeDef hadc1;
+ADC_HandleTypeDef hadc2;
 
 I2C_HandleTypeDef hi2c1;
 
@@ -80,6 +81,7 @@ PCD_HandleTypeDef hpcd_USB_FS;
 	unsigned char buffer[100] = "";
 	int pos = 0;
 	char temp[100] = "";
+	char light[100] = "";
 	
 	void specialChar();
 
@@ -95,6 +97,7 @@ static void MX_RTC_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_ADC1_Init(void);
+static void MX_ADC2_Init(void);
 
 /* USER CODE BEGIN PFP */
 /* Private function prototypes -----------------------------------------------*/
@@ -248,6 +251,24 @@ void showTemp(){
 	
 	setCursor(13,0);
 	write(0);
+	
+}
+
+void showLight(){
+	setCursor(4,0);
+	print(light);
+	
+	setCursor(8,0);
+	print("%");
+	
+	setCursor(11,0);
+	write(6);
+	
+	setCursor(12,0);
+	write(5);
+	
+	setCursor(13,0);
+	write(4);
 }
 
 int ClearScreen(){
@@ -410,10 +431,11 @@ int main(void)
   MX_USART2_UART_Init();
   MX_TIM2_Init();
   MX_ADC1_Init();
+  MX_ADC2_Init();
   /* USER CODE BEGIN 2 */
 	LiquidCrystal(GPIOD, GPIO_PIN_8, GPIO_PIN_9, GPIO_PIN_10, GPIO_PIN_11, GPIO_PIN_12, GPIO_PIN_13, GPIO_PIN_14);
 	begin(20,4);
-		
+	specialChar();
 	t.Hours = 0x12;
 	t.Minutes = 0x2D;
 	t.Seconds = 0x0;	
@@ -428,14 +450,17 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+	HAL_ADC_Start_IT(&hadc1);
+	HAL_ADC_Start_IT(&hadc2);
 	HAL_TIM_Base_Start_IT(&htim2);
 	HAL_UART_Receive_IT(&huart2, &dd, sizeof(unsigned char));
-	HAL_ADC_Start_IT(&hadc1);
+
+
 	HAL_GPIO_WritePin(GPIOD,GPIO_PIN_4,1);
 	HAL_GPIO_WritePin(GPIOD,GPIO_PIN_5,1);
 	HAL_GPIO_WritePin(GPIOD,GPIO_PIN_6,1);
 	HAL_GPIO_WritePin(GPIOD,GPIO_PIN_7,1);
-	specialChar();
+	
 	
   while (1)
   {
@@ -560,6 +585,48 @@ static void MX_ADC1_Init(void)
   sConfig.OffsetNumber = ADC_OFFSET_NONE;
   sConfig.Offset = 0;
   if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
+  {
+    _Error_Handler(__FILE__, __LINE__);
+  }
+
+}
+
+/* ADC2 init function */
+static void MX_ADC2_Init(void)
+{
+
+  ADC_ChannelConfTypeDef sConfig;
+
+    /**Common config 
+    */
+  hadc2.Instance = ADC2;
+  hadc2.Init.ClockPrescaler = ADC_CLOCK_ASYNC_DIV1;
+  hadc2.Init.Resolution = ADC_RESOLUTION_8B;
+  hadc2.Init.ScanConvMode = ADC_SCAN_DISABLE;
+  hadc2.Init.ContinuousConvMode = DISABLE;
+  hadc2.Init.DiscontinuousConvMode = DISABLE;
+  hadc2.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
+  hadc2.Init.ExternalTrigConv = ADC_SOFTWARE_START;
+  hadc2.Init.DataAlign = ADC_DATAALIGN_RIGHT;
+  hadc2.Init.NbrOfConversion = 1;
+  hadc2.Init.DMAContinuousRequests = DISABLE;
+  hadc2.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
+  hadc2.Init.LowPowerAutoWait = DISABLE;
+  hadc2.Init.Overrun = ADC_OVR_DATA_OVERWRITTEN;
+  if (HAL_ADC_Init(&hadc2) != HAL_OK)
+  {
+    _Error_Handler(__FILE__, __LINE__);
+  }
+
+    /**Configure Regular Channel 
+    */
+  sConfig.Channel = ADC_CHANNEL_5;
+  sConfig.Rank = ADC_REGULAR_RANK_1;
+  sConfig.SingleDiff = ADC_SINGLE_ENDED;
+  sConfig.SamplingTime = ADC_SAMPLETIME_601CYCLES_5;
+  sConfig.OffsetNumber = ADC_OFFSET_NONE;
+  sConfig.Offset = 0;
+  if (HAL_ADC_ConfigChannel(&hadc2, &sConfig) != HAL_OK)
   {
     _Error_Handler(__FILE__, __LINE__);
   }

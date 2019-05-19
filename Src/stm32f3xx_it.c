@@ -46,7 +46,8 @@
 	extern unsigned char buffer[100];
 	extern int pos;
 	extern char temp[100];
-	unsigned char m[15] = "Motion Detected";
+	extern char light[100];
+	unsigned char m[16] = "Motion Detected";
 
 	//TimeAndCalenderMethods
 	extern char* zeropadd(int time);
@@ -60,11 +61,13 @@
 	
 	/*TempMethods*/
 	extern void showTemp();
+	extern void showLight();
 
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
 extern ADC_HandleTypeDef hadc1;
+extern ADC_HandleTypeDef hadc2;
 extern TIM_HandleTypeDef htim2;
 extern UART_HandleTypeDef huart2;
 
@@ -305,7 +308,50 @@ void EXTI1_IRQHandler(void)
   /* USER CODE END EXTI1_IRQn 0 */
   HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_1);
   /* USER CODE BEGIN EXTI1_IRQn 1 */
+	for(int i = 0; i < 4; i++){
+		if(i == 0){
+			HAL_GPIO_WritePin(GPIOD,GPIO_PIN_4,1);
+			HAL_GPIO_WritePin(GPIOD,GPIO_PIN_5,0);
+			HAL_GPIO_WritePin(GPIOD,GPIO_PIN_6,0);
+			HAL_GPIO_WritePin(GPIOD,GPIO_PIN_7,0);		
+		}
+		else if(i == 1){
+			HAL_GPIO_WritePin(GPIOD,GPIO_PIN_4,0);
+			HAL_GPIO_WritePin(GPIOD,GPIO_PIN_5,1);
+			HAL_GPIO_WritePin(GPIOD,GPIO_PIN_6,0);
+			HAL_GPIO_WritePin(GPIOD,GPIO_PIN_7,0);
+		}
+		else if(i == 2){
+			HAL_GPIO_WritePin(GPIOD,GPIO_PIN_4,0);
+			HAL_GPIO_WritePin(GPIOD,GPIO_PIN_5,0);
+			HAL_GPIO_WritePin(GPIOD,GPIO_PIN_6,1);
+			HAL_GPIO_WritePin(GPIOD,GPIO_PIN_7,0);	
+		}
+		else if(i == 3){
+			HAL_GPIO_WritePin(GPIOD,GPIO_PIN_4,0);
+			HAL_GPIO_WritePin(GPIOD,GPIO_PIN_5,0);
+			HAL_GPIO_WritePin(GPIOD,GPIO_PIN_6,0);
+			HAL_GPIO_WritePin(GPIOD,GPIO_PIN_7,1);
+		}
+		
+		if(HAL_GPIO_ReadPin(GPIOB,GPIO_PIN_1) && i == 0){
+			if(mode == 1){ 
+				mode = 2;
+			}
+			else if (mode == 2){
+				mode = 1;
+			}
+			while(HAL_GPIO_ReadPin(GPIOB,GPIO_PIN_1));
+			HAL_Delay(20);
+		}
 
+		
+		HAL_GPIO_WritePin(GPIOD,GPIO_PIN_4,1);
+		HAL_GPIO_WritePin(GPIOD,GPIO_PIN_5,1);
+		HAL_GPIO_WritePin(GPIOD,GPIO_PIN_6,1);
+		HAL_GPIO_WritePin(GPIOD,GPIO_PIN_7,1);
+		
+	}
   /* USER CODE END EXTI1_IRQn 1 */
 }
 
@@ -346,10 +392,13 @@ void ADC1_2_IRQHandler(void)
 
   /* USER CODE END ADC1_2_IRQn 0 */
   HAL_ADC_IRQHandler(&hadc1);
+  HAL_ADC_IRQHandler(&hadc2);
   /* USER CODE BEGIN ADC1_2_IRQn 1 */
-	int x = HAL_ADC_GetValue(&hadc1);
+	int y = HAL_ADC_GetValue(&hadc2);
+	sprintf(light,"%d",y);
+
+		int x = HAL_ADC_GetValue(&hadc1);
 	sprintf(temp,"%d",x);
-	HAL_ADC_Start_IT(&hadc1);
   /* USER CODE END ADC1_2_IRQn 1 */
 }
 
@@ -363,7 +412,8 @@ void EXTI9_5_IRQHandler(void)
   /* USER CODE END EXTI9_5_IRQn 0 */
   HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_9);
   /* USER CODE BEGIN EXTI9_5_IRQn 1 */
-	HAL_UART_Transmit(&huart2,m,sizeof(unsigned char)*100,1000);
+	HAL_UART_Transmit(&huart2,m,sizeof(unsigned char)*16,1000);
+	HAL_Delay(20);
   /* USER CODE END EXTI9_5_IRQn 1 */
 }
 
@@ -389,13 +439,17 @@ void TIM2_IRQHandler(void)
 			case 1:
 				showTemp();
 				break;
+			case 2:
+				showLight();
+				break;
 			case 3:
 				showTimeCalender(t,d,blinkCounter);
 				break;
 
 			
 		}
-
+		HAL_ADC_Start_IT(&hadc2);
+		HAL_ADC_Start_IT(&hadc1);
   /* USER CODE END TIM2_IRQn 1 */
 }
 
@@ -422,7 +476,12 @@ void USART2_IRQHandler(void)
 					if(mode == 0){
 						
 						mode = 1;
+						*(buffer) = ' ';
 						*(buffer + 1) = ' ';
+						*(buffer + 2) = ' ';
+						*(buffer + 3) = ' ';
+						*(buffer + 4) = ' ';
+						*(buffer + 5) = ' ';
 					}
 					else
 						mode = 0;
