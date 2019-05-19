@@ -42,12 +42,15 @@
 	extern int blinkCounter;
 	extern RTC_TimeTypeDef t;
 	extern RTC_DateTypeDef d;
+	extern RTC_HandleTypeDef hrtc;
 	extern unsigned char dd;
 	extern unsigned char buffer[100];
 	extern int pos;
 	extern char temp[100];
 	extern char light[100];
 	unsigned char m[16] = "Motion Detected";
+	extern TIM_HandleTypeDef htim3;
+
 
 	//TimeAndCalenderMethods
 	extern char* zeropadd(int time);
@@ -62,12 +65,15 @@
 	/*TempMethods*/
 	extern void showTemp();
 	extern void showLight();
+	extern void decreaseTime();
+	int flag = 0;
 
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
 extern ADC_HandleTypeDef hadc1;
 extern ADC_HandleTypeDef hadc2;
+extern ADC_HandleTypeDef hadc3;
 extern TIM_HandleTypeDef htim2;
 extern UART_HandleTypeDef huart2;
 
@@ -227,10 +233,6 @@ void SysTick_Handler(void)
 void EXTI0_IRQHandler(void)
 {
   /* USER CODE BEGIN EXTI0_IRQn 0 */
-
-  /* USER CODE END EXTI0_IRQn 0 */
-  HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_0);
-  /* USER CODE BEGIN EXTI0_IRQn 1 */
 	for(int i = 0; i < 4; i++){
 		if(i == 0){
 			HAL_GPIO_WritePin(GPIOD,GPIO_PIN_4,1);
@@ -284,6 +286,9 @@ void EXTI0_IRQHandler(void)
 			HAL_Delay(20);
 		}
 		if(HAL_GPIO_ReadPin(GPIOB,GPIO_PIN_0) && i == 3){
+			if(mode == 3){
+				increaseTime();
+			}
 			while(HAL_GPIO_ReadPin(GPIOB,GPIO_PIN_0));
 			HAL_Delay(20);
 		}
@@ -294,6 +299,9 @@ void EXTI0_IRQHandler(void)
 		HAL_GPIO_WritePin(GPIOD,GPIO_PIN_7,1);
 		
 	}
+  /* USER CODE END EXTI0_IRQn 0 */
+  HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_0);
+  /* USER CODE BEGIN EXTI0_IRQn 1 */
 
   /* USER CODE END EXTI0_IRQn 1 */
 }
@@ -304,10 +312,6 @@ void EXTI0_IRQHandler(void)
 void EXTI1_IRQHandler(void)
 {
   /* USER CODE BEGIN EXTI1_IRQn 0 */
-
-  /* USER CODE END EXTI1_IRQn 0 */
-  HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_1);
-  /* USER CODE BEGIN EXTI1_IRQn 1 */
 	for(int i = 0; i < 4; i++){
 		if(i == 0){
 			HAL_GPIO_WritePin(GPIOD,GPIO_PIN_4,1);
@@ -344,6 +348,14 @@ void EXTI1_IRQHandler(void)
 			while(HAL_GPIO_ReadPin(GPIOB,GPIO_PIN_1));
 			HAL_Delay(20);
 		}
+		if(HAL_GPIO_ReadPin(GPIOB,GPIO_PIN_1) && i == 3){
+			if(mode == 3){ 
+				decreaseTime();
+			}
+			
+			while(HAL_GPIO_ReadPin(GPIOB,GPIO_PIN_1));
+			HAL_Delay(20);
+		}
 
 		
 		HAL_GPIO_WritePin(GPIOD,GPIO_PIN_4,1);
@@ -352,6 +364,10 @@ void EXTI1_IRQHandler(void)
 		HAL_GPIO_WritePin(GPIOD,GPIO_PIN_7,1);
 		
 	}
+  /* USER CODE END EXTI1_IRQn 0 */
+  HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_1);
+  /* USER CODE BEGIN EXTI1_IRQn 1 */
+
   /* USER CODE END EXTI1_IRQn 1 */
 }
 
@@ -389,16 +405,18 @@ void EXTI4_IRQHandler(void)
 void ADC1_2_IRQHandler(void)
 {
   /* USER CODE BEGIN ADC1_2_IRQn 0 */
-
+	int y = HAL_ADC_GetValue(&hadc2);
+	sprintf(light,"%d",(y/20));
+	__HAL_TIM_SET_COMPARE(&htim3,TIM_CHANNEL_1,y);
+	
+	int x = HAL_ADC_GetValue(&hadc1);
+	sprintf(temp,"%d",x);
   /* USER CODE END ADC1_2_IRQn 0 */
   HAL_ADC_IRQHandler(&hadc1);
   HAL_ADC_IRQHandler(&hadc2);
   /* USER CODE BEGIN ADC1_2_IRQn 1 */
-	int y = HAL_ADC_GetValue(&hadc2);
-	sprintf(light,"%d",y);
-
-		int x = HAL_ADC_GetValue(&hadc1);
-	sprintf(temp,"%d",x);
+	HAL_ADC_Start_IT(&hadc2);
+	HAL_ADC_Start_IT(&hadc1);
   /* USER CODE END ADC1_2_IRQn 1 */
 }
 
@@ -408,12 +426,12 @@ void ADC1_2_IRQHandler(void)
 void EXTI9_5_IRQHandler(void)
 {
   /* USER CODE BEGIN EXTI9_5_IRQn 0 */
-
+	HAL_UART_Transmit(&huart2,m,sizeof(unsigned char)*16,1000);
+	HAL_Delay(20);
   /* USER CODE END EXTI9_5_IRQn 0 */
   HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_9);
   /* USER CODE BEGIN EXTI9_5_IRQn 1 */
-	HAL_UART_Transmit(&huart2,m,sizeof(unsigned char)*16,1000);
-	HAL_Delay(20);
+
   /* USER CODE END EXTI9_5_IRQn 1 */
 }
 
@@ -423,12 +441,32 @@ void EXTI9_5_IRQHandler(void)
 void TIM2_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM2_IRQn 0 */
-
-  /* USER CODE END TIM2_IRQn 0 */
-  HAL_TIM_IRQHandler(&htim2);
-  /* USER CODE BEGIN TIM2_IRQn 1 */
-	
-		if(c){
+	if(flag == 0){
+		t.Hours = 0x12;
+		t.Minutes = 0x2D;
+		t.Seconds = 0x0;	
+		d.WeekDay = 6;
+		d.Date = 0x0B;
+		d.Month = RTC_MONTH_MAY;
+		d.Year = 0x13;	
+		HAL_RTC_SetTime(&hrtc,&t,RTC_FORMAT_BIN);
+		HAL_RTC_SetDate(&hrtc,&d,RTC_FORMAT_BIN);
+		HAL_ADC_Start_IT(&hadc1);
+		HAL_ADC_Start_IT(&hadc2);
+		HAL_ADC_Start_IT(&hadc3);
+		HAL_UART_Receive_IT(&huart2, &dd, sizeof(unsigned char));	
+		HAL_TIM_PWM_Start(&htim3,TIM_CHANNEL_1);
+		
+		
+		HAL_GPIO_WritePin(GPIOD,GPIO_PIN_4,1);
+		HAL_GPIO_WritePin(GPIOD,GPIO_PIN_5,1);
+		HAL_GPIO_WritePin(GPIOD,GPIO_PIN_6,1);
+		HAL_GPIO_WritePin(GPIOD,GPIO_PIN_7,1);
+		
+		
+		flag = 1;
+	}
+	if(c){
 			c = ClearScreen();
 		}
 		
@@ -445,11 +483,14 @@ void TIM2_IRQHandler(void)
 			case 3:
 				showTimeCalender(t,d,blinkCounter);
 				break;
-
-			
+		
 		}
-		HAL_ADC_Start_IT(&hadc2);
-		HAL_ADC_Start_IT(&hadc1);
+	
+  /* USER CODE END TIM2_IRQn 0 */
+  HAL_TIM_IRQHandler(&htim2);
+  /* USER CODE BEGIN TIM2_IRQn 1 */
+	HAL_TIM_Base_Start_IT(&htim2);
+
   /* USER CODE END TIM2_IRQn 1 */
 }
 
@@ -463,8 +504,7 @@ void USART2_IRQHandler(void)
   /* USER CODE END USART2_IRQn 0 */
   HAL_UART_IRQHandler(&huart2);
   /* USER CODE BEGIN USART2_IRQn 1 */
-	
-		if (dd != 0x0D){
+			if (dd != 0x0D){
 			buffer[pos] = dd;
 			pos++;
 			buffer[pos] = '\0';
@@ -488,9 +528,100 @@ void USART2_IRQHandler(void)
 					c = 1;
 			}
 		}
-
-		HAL_UART_Receive_IT(&huart2, &dd, sizeof(unsigned char));
+	HAL_UART_Receive_IT(&huart2, &dd, sizeof(unsigned char));
   /* USER CODE END USART2_IRQn 1 */
+}
+
+/**
+* @brief This function handles ADC3 global interrupt.
+*/
+void ADC3_IRQHandler(void)
+{
+  /* USER CODE BEGIN ADC3_IRQn 0 */
+	int v = HAL_ADC_GetValue(&hadc3);
+	v = (v*100) / 255;
+
+	if(v > 60){
+		if(v>=60 && v < 70){
+			HAL_GPIO_WritePin(GPIOE,GPIO_PIN_10,1);
+			HAL_GPIO_WritePin(GPIOE,GPIO_PIN_11,0);
+			HAL_GPIO_WritePin(GPIOE,GPIO_PIN_12,0);
+			HAL_GPIO_WritePin(GPIOE,GPIO_PIN_13,0);
+		}
+		if(v>=70 && v < 80){
+			HAL_GPIO_WritePin(GPIOE,GPIO_PIN_10,1);
+			HAL_GPIO_WritePin(GPIOE,GPIO_PIN_11,1);
+			HAL_GPIO_WritePin(GPIOE,GPIO_PIN_12,0);
+			HAL_GPIO_WritePin(GPIOE,GPIO_PIN_13,0);
+		}
+		if(v>=80 && v < 90){
+			HAL_GPIO_WritePin(GPIOE,GPIO_PIN_10,1);
+			HAL_GPIO_WritePin(GPIOE,GPIO_PIN_11,1);
+			HAL_GPIO_WritePin(GPIOE,GPIO_PIN_12,1);
+			HAL_GPIO_WritePin(GPIOE,GPIO_PIN_13,0);
+		}
+		if(v>=90){
+			HAL_GPIO_WritePin(GPIOE,GPIO_PIN_10,1);
+			HAL_GPIO_WritePin(GPIOE,GPIO_PIN_11,1);
+			HAL_GPIO_WritePin(GPIOE,GPIO_PIN_12,1);
+			HAL_GPIO_WritePin(GPIOE,GPIO_PIN_13,1);
+		}
+		
+		HAL_GPIO_WritePin(GPIOE,GPIO_PIN_14,0);
+		HAL_GPIO_WritePin(GPIOE,GPIO_PIN_15,0);
+		HAL_GPIO_WritePin(GPIOE,GPIO_PIN_8,0);
+		HAL_GPIO_WritePin(GPIOE,GPIO_PIN_9,0);
+		HAL_GPIO_WritePin(GPIOA,GPIO_PIN_8,1);
+	}
+	else if(v < 40){
+		if(v <= 10){
+			HAL_GPIO_WritePin(GPIOE,GPIO_PIN_14,1);
+			HAL_GPIO_WritePin(GPIOE,GPIO_PIN_15,0);
+			HAL_GPIO_WritePin(GPIOE,GPIO_PIN_8,0);
+			HAL_GPIO_WritePin(GPIOE,GPIO_PIN_9,0);
+		}
+		if(v > 10 && v <= 20){
+			HAL_GPIO_WritePin(GPIOE,GPIO_PIN_14,1);
+			HAL_GPIO_WritePin(GPIOE,GPIO_PIN_15,1);
+			HAL_GPIO_WritePin(GPIOE,GPIO_PIN_8,0);
+			HAL_GPIO_WritePin(GPIOE,GPIO_PIN_9,0);
+		}
+		if(v > 20 && v <= 30){
+			HAL_GPIO_WritePin(GPIOE,GPIO_PIN_14,1);
+			HAL_GPIO_WritePin(GPIOE,GPIO_PIN_15,1);
+			HAL_GPIO_WritePin(GPIOE,GPIO_PIN_8,1);
+			HAL_GPIO_WritePin(GPIOE,GPIO_PIN_9,0);
+		}
+		if(v > 30 && v <= 40){
+			HAL_GPIO_WritePin(GPIOE,GPIO_PIN_14,1);
+			HAL_GPIO_WritePin(GPIOE,GPIO_PIN_15,1);
+			HAL_GPIO_WritePin(GPIOE,GPIO_PIN_8,1);
+			HAL_GPIO_WritePin(GPIOE,GPIO_PIN_9,1);
+		}
+		
+		
+		HAL_GPIO_WritePin(GPIOE,GPIO_PIN_11,0);
+		HAL_GPIO_WritePin(GPIOE,GPIO_PIN_12,0);
+		HAL_GPIO_WritePin(GPIOE,GPIO_PIN_13,0);
+		HAL_GPIO_WritePin(GPIOE,GPIO_PIN_10,0);
+		HAL_GPIO_WritePin(GPIOA,GPIO_PIN_8,0);
+	}else{
+		HAL_GPIO_WritePin(GPIOE,GPIO_PIN_14,0);
+		HAL_GPIO_WritePin(GPIOE,GPIO_PIN_15,0);
+		HAL_GPIO_WritePin(GPIOE,GPIO_PIN_8,0);
+		HAL_GPIO_WritePin(GPIOE,GPIO_PIN_9,0);
+		HAL_GPIO_WritePin(GPIOE,GPIO_PIN_11,0);
+		HAL_GPIO_WritePin(GPIOE,GPIO_PIN_12,0);
+		HAL_GPIO_WritePin(GPIOE,GPIO_PIN_13,0);
+		HAL_GPIO_WritePin(GPIOE,GPIO_PIN_10,0);
+	}
+	
+  /* USER CODE END ADC3_IRQn 0 */
+  HAL_ADC_IRQHandler(&hadc3);
+  /* USER CODE BEGIN ADC3_IRQn 1 */
+	
+	HAL_ADC_Start_IT(&hadc3);
+  /* USER CODE END ADC3_IRQn 1 */
 }
 
 /* USER CODE BEGIN 1 */
